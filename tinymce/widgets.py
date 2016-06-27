@@ -59,38 +59,62 @@ class TinyMCE(forms.Textarea):
         self.profile = profile or DEFAULT_PROFILE
 
     def render(self, name, value, attrs=None):
-        if value is None: value = ''
+        if value is None:
+            value = ''
         value = smart_unicode(value)
         final_attrs = self.build_attrs(attrs)
         final_attrs['name'] = name
         assert 'id' in final_attrs, "TinyMCE widget attributes must contain 'id'"
 
-        mce_config = self.profile.copy()
-        #mce_config.update(get_language_config(self.content_language))
-        #if tinymce.settings.USE_FILEBROWSER:
-            #mce_config['file_browser_callback'] = "djangoFileBrowser"
+        mce_config = tinymce.settings.DEFAULT_CONFIG.copy()
+        mce_config.update(get_language_config(self.content_language))
+        if tinymce.settings.USE_FILEBROWSER:
+            mce_config['file_browser_callback'] = "djangoFileBrowser"
         mce_config.update(self.mce_attrs)
-        mce_config['selector'] = '#%s' % final_attrs['id']
-        
-        # Fix for js functions
-        #js_functions = {}
-        #for k in ('paste_preprocess','paste_postprocess'):
-            #if k in mce_config:
-               #js_functions[k] = mce_config[k]
-               #del mce_config[k]
-        mce_json = json.dumps(mce_config)
+        mce_config['mode'] = 'exact'
+        mce_config['elements'] = final_attrs['id']
+        mce_config['strict_loading_mode'] = 1
+        mce_json = simplejson.dumps(mce_config)
 
-        #for k in js_functions:
-            #index = mce_json.rfind('}')
-            #mce_json = mce_json[:index]+', '+k+':'+js_functions[k].strip()+mce_json[index:]
+        # Patch for inlines
+        pos = final_attrs['id'].find('__prefix__')
+        if pos != -1:
+            mce_json = mce_json.replace(u'"%s"' % final_attrs['id'], u'elements')
 
-        if mce_config.get('inline', False):
-            html = [u'<div%s>%s</div>' % (flatatt(final_attrs), escape(value))]
+        # EOP
+        html = [u'<textarea%s>%s</textarea>' % (flatatt(final_attrs), escape(value))]
+        if tinymce.settings.USE_COMPRESSOR:
+            compressor_config = {
+                'plugins': mce_config.get('plugins', ''),
+                'themes': mce_config.get('theme', 'advanced'),
+                'languages': mce_config.get('language', ''),
+                'diskcache': True,
+                'debug': False,
+            }
+            compressor_json = simplejson.dumps(compressor_config)
+            html.append(u'<script type="text/javascript">tinyMCE_GZ.init(%s)</script>' % compressor_json)
+
+        # Patch for inlines
+        if pos != -1:
+            html.append(
+                u'''<script>
+                setTimeout(function () {
+                  if (typeof(window._tinymce_inited) == 'undefined') {
+                    window._tinymce_inited = true;
+                  } else {
+                    var elements = '%s'.replace(/__prefix__/, parseInt(document.getElementById('%sTOTAL_FORMS').value) - 1);
+                    if (document.getElementById(elements)) {
+                      tinymce.init(%s);
+                    }
+                  }
+                }, 0);
+                </script>''' % (
+                    final_attrs['id'], final_attrs['id'][0:pos], mce_json))
         else:
-            html = [u'<textarea%s>%s</textarea>' % (flatatt(final_attrs), escape(value))]
-        html.append(u'<script type="text/javascript">tinyMCE.init(%s)</script>' % mce_json)
+            html.append(u'<script>tinyMCE.init(%s)</script>' % mce_json)
 
         return mark_safe(u'\n'.join(html))
+
 
     def _media(self):
         if tinymce.settings.USE_COMPRESSOR:
