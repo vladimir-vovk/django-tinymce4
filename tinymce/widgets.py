@@ -6,28 +6,22 @@ This TinyMCE widget was copied and extended from this code by John D'Agostino:
 http://code.djangoproject.com/wiki/CustomWidgetsTinyMCE
 """
 
-import json
 from django import forms
 from django.conf import settings
 from django.contrib.admin import widgets as admin_widgets
 from django.core.urlresolvers import reverse
 from django.forms.widgets import flatatt
 try:
-    from django.utils.encoding import smart_text as smart_unicode
+    from django.utils.encoding import smart_unicode
 except ImportError:
-    try:
-        from django.utils.encoding import smart_unicode
-    except ImportError:
-        from django.forms.util import smart_unicode
+    from django.forms.util import smart_unicode
 from django.utils.html import escape
-try:
-    from django.utils.datastructures import SortedDict
-except ImportError:
-    from collections import OrderedDict as SortedDict
+from django.utils import simplejson
+from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
 from django.utils.translation import get_language, ugettext as _
+
 import tinymce.settings
-from tinymce.profiles import DEFAULT as DEFAULT_PROFILE
 
 
 class TinyMCE(forms.Textarea):
@@ -56,7 +50,6 @@ class TinyMCE(forms.Textarea):
         if content_language is None:
             content_language = mce_attrs.get('language', None)
         self.content_language = content_language
-        self.profile = profile or DEFAULT_PROFILE
 
     def render(self, name, value, attrs=None):
         if value is None:
