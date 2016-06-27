@@ -67,6 +67,7 @@ class TinyMCE(forms.Textarea):
         mce_config['mode'] = 'exact'
         mce_config['elements'] = final_attrs['id']
         mce_config['strict_loading_mode'] = 1
+        mce_config['menubar'] = False
         mce_json = simplejson.dumps(mce_config)
 
         # Patch for inlines
