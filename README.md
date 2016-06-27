@@ -1,5 +1,7 @@
 django-tinymce4
 ===
+widget.py was patched for Django 1.6 admin inlines support.
+Minor changes in skin.min.css for Grappelli interface.
 
 **django-tinymce4** is a Django application that contains a widget to render a form field as a TinyMCE editor.
 
